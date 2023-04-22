@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="CaseStudy_ENS_Server">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/Java/CaseStudy_ENS_Server/dist/CaseStudy_ENS_Server.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/Java/CaseStudy_ENS_Server/CaseStudy_ENS_Server.iml" filepath="$PROJECT_DIR$/Java/CaseStudy_ENS_Server/CaseStudy_ENS_Server.iml" />
+      <module fileurl="file://$PROJECT_DIR$/Java/CaseStudy_NotServ_Consume_Client_JAVA/CaseStudy_NotServ_Consume_Client_JAVA.iml" filepath="$PROJECT_DIR$/Java/CaseStudy_NotServ_Consume_Client_JAVA/CaseStudy_NotServ_Consume_Client_JAVA.iml" />
+      <module fileurl="file://$PROJECT_DIR$/Java/CaseStudy_NotServ_Publish_Client_JAVA/CaseStudy_NotServ_Publish_Client_JAVA.iml" filepath="$PROJECT_DIR$/Java/CaseStudy_NotServ_Publish_Client_JAVA/CaseStudy_NotServ_Publish_Client_JAVA.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/SP_C7_Jv.iml" filepath="$PROJECT_DIR$/.idea/SP_C7_Jv.iml" />
+      <module fileurl="file://$PROJECT_DIR$/Java/TimeServiceClient_CONSOLE_uses_library/TimeServiceClient_CONSOLE_uses_library.iml" filepath="$PROJECT_DIR$/Java/TimeServiceClient_CONSOLE_uses_library/TimeServiceClient_CONSOLE_uses_library.iml" />
+      <module fileurl="file://$PROJECT_DIR$/Java/TimeServiceClient_GUI_Monolithic/TimeServiceClient_GUI_Monolithic.iml" filepath="$PROJECT_DIR$/Java/TimeServiceClient_GUI_Monolithic/TimeServiceClient_GUI_Monolithic.iml" />
+      <module fileurl="file://$PROJECT_DIR$/Java/TimeServiceClient_GUI_Refactored/TimeServiceClient_GUI_Refactored.iml" filepath="$PROJECT_DIR$/Java/TimeServiceClient_GUI_Refactored/TimeServiceClient_GUI_Refactored.iml" />
+      <module fileurl="file://$PROJECT_DIR$/Java/TimeServiceClient_GUI_uses_library/TimeServiceClient_GUI_uses_library.iml" filepath="$PROJECT_DIR$/Java/TimeServiceClient_GUI_uses_library/TimeServiceClient_GUI_uses_library.iml" />
+      <module fileurl="file://$PROJECT_DIR$/Java/TimeServiceClient_Library/TimeServiceClient_Library.iml" filepath="$PROJECT_DIR$/Java/TimeServiceClient_Library/TimeServiceClient_Library.iml" />
+    </modules>
+  </component>
+</project>
