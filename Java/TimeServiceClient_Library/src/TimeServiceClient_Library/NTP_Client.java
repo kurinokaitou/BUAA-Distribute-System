@@ -186,8 +186,8 @@ public class NTP_Client
             ntpData.transmitTimestamp = Resolve_NTP_Timestamp_Miliseconds(bRecvBuf, 40);
             long currentRecvTimestamp = System.currentTimeMillis();
             ntpData.roundTripDelay = (currentRecvTimestamp - ntpData.originTimestamp) - (ntpData.transmitTimestamp - ntpData.recvTimestamp);
-            ntpData.localClockOffset = ((ntpData.recvTimestamp - ntpData.originTimestamp) + (ntpData.transmitTimestamp - currentRecvTimestamp)) / 2;
-            ntpData.lUnixTime = currentRecvTimestamp + ntpData.localClockOffset;
+            ntpData.localClockOffset = ((ntpData.recvTimestamp - ntpData.originTimestamp) + (ntpData.transmitTimestamp - System.currentTimeMillis())) / 2;
+            ntpData.lUnixTime = System.currentTimeMillis() + ntpData.localClockOffset;
             ntpData.lHour = (long) (ntpData.lUnixTime / 1000L  % 86400L) / 3600;
             ntpData.lMinute = (long) (ntpData.lUnixTime / 1000L % 3600) / 60;
             ntpData.lSecond = (long) ntpData.lUnixTime / 1000L % 60;
