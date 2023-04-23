@@ -117,7 +117,7 @@ public class TimeServiceClient_CONSOLE_uses_library
 
     void Get_NTP_Timestamp()
     {
-        NTP_Client.NTP_Timestamp_Data NTP_Timestamp = m_NTP_Client.Get_NTP_Timestamp();
+        NTP_Client.NTP_Data NTP_Timestamp = m_NTP_Client.Get_NTP_Timestamp();
         switch (NTP_Timestamp.eResultCode)
         {
             case NTP_Success:

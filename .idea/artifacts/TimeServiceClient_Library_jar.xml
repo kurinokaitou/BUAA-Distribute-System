@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="TimeServiceClient_Library:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/TimeServiceClient_Library_jar</output-path>
+    <root id="archive" name="TimeServiceClient_Library.jar">
+      <element id="module-output" name="TimeServiceClient_Library" />
+    </root>
+  </artifact>
+</component>

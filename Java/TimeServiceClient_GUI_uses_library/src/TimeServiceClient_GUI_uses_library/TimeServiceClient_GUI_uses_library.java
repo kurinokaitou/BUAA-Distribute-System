@@ -96,7 +96,7 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
     {
         public void run()
         {
-            NTP_Client.NTP_Timestamp_Data NTP_Timestamp = m_NTP_Client.Get_NTP_Timestamp();
+            NTP_Client.NTP_Data NTP_Timestamp = m_NTP_Client.Get_NTP_Timestamp();
             switch (NTP_Timestamp.eResultCode)
             {
                 case NTP_Success:

@@ -17,30 +17,48 @@ public class NTP_Client
     
     private static int NTP_Port = 123;
     private static int NTP_PACKET_SIZE = 48;// NTP time stamp is in the first 48 bytes of the message
-    private static long SeventyYears = 2208988800L;  // Number of seconds in 70 years. 
+    private static long SeventyYears = 2208988800L;  // Number of seconds in 70 years.
                                                 // The raw timestamp is the number of seconds Since 1900
                                                 // Unix time starts on Jan 1 1970 (70 years = 2208988800 seconds)
     DatagramSocket m_TimeService_Socket;
     InetAddress m_TimeService_IPAddress;
     Boolean m_bNTP_Client_Started;
-    
+
     public enum NTP_Client_ResultCode {NTP_Success, NTP_ServerAddressNotSet, NTP_SendFailed, NTP_ReceiveFailed};
 
-    public final class NTP_Timestamp_Data
+    public class NTP_Data
     {		
         public NTP_Client_ResultCode eResultCode;
+        public int stratum;
+        public int poll;
+        public int presicion;
+        public int rootDelay;
+        public int rootDispersion;
+        public long refTimestamp;
+        public long originTimestamp;
+        public long recvTimestamp;
+        public long transmitTimestamp;
+        public long roundTripDelay;
+        public long localClockOffset;
         public long lUnixTime;	// Seconds since 1970 (secsSince1900 - seventyYears)
         public long lHour;
         public long lMinute;
         public long lSecond;
-
-        NTP_Timestamp_Data()
+        public long lMilisecond;
+        NTP_Data()
         {
-            eResultCode = NTP_Client_ResultCode.NTP_ServerAddressNotSet; // Use as default for construction (gets overwritten)
+            eResultCode = NTP_Client_ResultCode.NTP_ServerAddressNotSet;
             lHour = 0;
             lMinute = 0;
             lSecond = 0;
+            lMilisecond = 0;
             lUnixTime = 0;
+            refTimestamp = 0;
+            originTimestamp = 0;
+            transmitTimestamp = 0;
+            recvTimestamp = 0;
+            roundTripDelay = 0;
+            localClockOffset = 0;
         }
     };
 
@@ -90,27 +108,27 @@ public class NTP_Client
         return NTP_Port;
     }
         
-    public NTP_Timestamp_Data Get_NTP_Timestamp()
+    public NTP_Data Get_NTP_Timestamp()
     {
-        NTP_Timestamp_Data NTP_Timestamp = new NTP_Timestamp_Data();
+        NTP_Data ntpData = new NTP_Data();
         if(true == m_bTimeServiceAddressSet)
         {
             if(true == Send_TimeService_Request())
             {   // Send operation succeeded 
-                NTP_Timestamp = Receive(NTP_Timestamp);
-                if(0 != NTP_Timestamp.lUnixTime)
+                ntpData = Receive(ntpData);
+                if(0 != ntpData.lUnixTime)
                 {
-                    NTP_Timestamp.eResultCode = NTP_Client_ResultCode.NTP_Success; // Signal that the NTP_Timestamp has been updated with valid content
-                    return NTP_Timestamp;
+                    ntpData.eResultCode = NTP_Client_ResultCode.NTP_Success; // Signal that the NTP_Timestamp has been updated with valid content
+                    return ntpData;
                 }
-                NTP_Timestamp.eResultCode = NTP_Client_ResultCode.NTP_ReceiveFailed; // Signal that the receive operation failed (Time server did not reply)
-                return NTP_Timestamp;
+                ntpData.eResultCode = NTP_Client_ResultCode.NTP_ReceiveFailed; // Signal that the receive operation failed (Time server did not reply)
+                return ntpData;
             }
-            NTP_Timestamp.eResultCode = NTP_Client_ResultCode.NTP_SendFailed; // Signal that the send operation failed (Time server was not contacted)
-            return NTP_Timestamp;
+            ntpData.eResultCode = NTP_Client_ResultCode.NTP_SendFailed; // Signal that the send operation failed (Time server was not contacted)
+            return ntpData;
         }
-        NTP_Timestamp.eResultCode = NTP_Client_ResultCode.NTP_ServerAddressNotSet; // Signal that Time server address has not been set, cannot get NTP timestamp
-        return NTP_Timestamp;
+        ntpData.eResultCode = NTP_Client_ResultCode.NTP_ServerAddressNotSet; // Signal that Time server address has not been set, cannot get NTP timestamp
+        return ntpData;
     }
 
     Boolean Send_TimeService_Request()
@@ -121,7 +139,8 @@ public class NTP_Client
         // LI bits 7,6		= 3 (Clock not synchronised), 
         // Version bits 5,4,3	= 4 (The current version of NTP)
         // Mode bits 2,1,0	= 3 (Sent by client)
-
+        long currentMiliSecs = System.currentTimeMillis();
+        Resolve_Miliseconds_NTP_Timestamp(bSendBuf, 40, currentMiliSecs);
         try
         {
             DatagramPacket SendPacket = new DatagramPacket(bSendBuf, bSendBuf.length,
@@ -140,7 +159,7 @@ public class NTP_Client
         return true;
     }
 
-    private NTP_Timestamp_Data Receive(NTP_Timestamp_Data NTP_Timestamp)
+    private NTP_Data Receive(NTP_Data ntpData)
     {
         byte[] bRecvBuf = new byte [NTP_PACKET_SIZE]; // buffer to hold incoming packets (UTC time value)
         DatagramPacket RecvPacket = new DatagramPacket(bRecvBuf, NTP_PACKET_SIZE);
@@ -150,27 +169,35 @@ public class NTP_Client
         }
         catch(Exception ex)
         {
-            NTP_Timestamp.lUnixTime = 0; // Signal that an error occurred
-            return NTP_Timestamp;
+            ntpData.lUnixTime = 0; // Signal that an error occurred
+            return ntpData;
         }
 
         if (0 < RecvPacket.getLength())
         {   // The timestamp starts at byte 40 of the received packet and is four bytes,
-            long l1 = (long) bRecvBuf[40] & 0xFF;
-            long l2 = (long) bRecvBuf[41] & 0xFF;
-            long l3 = (long) bRecvBuf[42] & 0xFF;
-            long l4 = (long) bRecvBuf[43] & 0xFF;
-            long secsSince1900 = (l1 << 24) + (l2 << 16) + (l3 << 8) + l4;  
-            NTP_Timestamp.lUnixTime = secsSince1900 - SeventyYears;	// Subtract seventy years
-            NTP_Timestamp.lHour = (long) (NTP_Timestamp.lUnixTime  % 86400L) / 3600;
-            NTP_Timestamp.lMinute = (long) (NTP_Timestamp.lUnixTime % 3600) / 60;
-            NTP_Timestamp.lSecond = (long) NTP_Timestamp.lUnixTime % 60;
+            ntpData.stratum = Resolve_NTP(bRecvBuf, 1, 1);
+            ntpData.poll = Resolve_NTP(bRecvBuf, 2, 1);
+            ntpData.presicion = Resolve_NTP(bRecvBuf, 3, 1);
+            ntpData.rootDelay = Resolve_NTP(bRecvBuf, 4, 4);
+            ntpData.rootDispersion = Resolve_NTP(bRecvBuf, 8, 4);
+            ntpData.refTimestamp = Resolve_NTP_Timestamp_Miliseconds(bRecvBuf, 16);
+            ntpData.originTimestamp = Resolve_NTP_Timestamp_Miliseconds(bRecvBuf, 24);
+            ntpData.recvTimestamp = Resolve_NTP_Timestamp_Miliseconds(bRecvBuf, 32);
+            ntpData.transmitTimestamp = Resolve_NTP_Timestamp_Miliseconds(bRecvBuf, 40);
+            long currentRecvTimestamp = System.currentTimeMillis();
+            ntpData.roundTripDelay = (currentRecvTimestamp - ntpData.originTimestamp) - (ntpData.transmitTimestamp - ntpData.recvTimestamp);
+            ntpData.localClockOffset = ((ntpData.recvTimestamp - ntpData.originTimestamp) + (ntpData.transmitTimestamp - currentRecvTimestamp)) / 2;
+            ntpData.lUnixTime = currentRecvTimestamp + ntpData.localClockOffset;
+            ntpData.lHour = (long) (ntpData.lUnixTime / 1000L  % 86400L) / 3600;
+            ntpData.lMinute = (long) (ntpData.lUnixTime / 1000L % 3600) / 60;
+            ntpData.lSecond = (long) ntpData.lUnixTime / 1000L % 60;
+            ntpData.lMilisecond = (long) ntpData.lUnixTime % 1000L;
         }
         else
         {
-            NTP_Timestamp.lUnixTime = 0; // Signal that an error occurred
+            ntpData.lUnixTime = 0; // Signal that an error occurred
         }
-        return NTP_Timestamp;
+        return ntpData;
     }
 
     public Boolean Get_ClientStarted_Flag()
@@ -191,6 +218,38 @@ public class NTP_Client
         }
         catch (Exception Ex)
         {   // Generic approach to dealing with situations such as socket not created
+        }
+    }
+
+    private static int Resolve_NTP(byte[] buffer, int startOffset, int byteCount){
+        int num = 0;
+        for(int i = 0; i < byteCount; i++){
+            num += ((long) buffer[startOffset+i] & 0xFF) << (3-i)*8;
+        }
+        return num;
+    }
+
+    private static long Resolve_NTP_Timestamp_Miliseconds(byte[] buffer, int startOffset){
+        long intPart = 0;
+        for(int i = 0; i < 4; i++){
+            intPart += ((long) buffer[startOffset+i] & 0xFF) << (3-i)*8;
+        }
+        long fracPart = 0;
+        for(int i = 0; i < 4; i++){
+            fracPart += ((long) buffer[startOffset+i+4] & 0xFF) << (3-i)*8;
+        }
+        long secondsSince1970 = intPart - SeventyYears;
+        long milisecondsSince1970 = secondsSince1970 * 1000;
+        long fracMiliseconds = (fracPart * 1000 + (1L << 31)) >>> 32;
+        return milisecondsSince1970 + fracMiliseconds;
+    }
+
+    private static void Resolve_Miliseconds_NTP_Timestamp(byte[] buffer, int startOffset, long milliseconds) {
+        long secondsSince1900 = milliseconds / 1000 + SeventyYears;
+        long fractionalMilliseconds = ((milliseconds % 1000) * (1L << 32)) / 1000;
+        long ntpTimestamp = (secondsSince1900 << 32) | fractionalMilliseconds;
+        for (int i = startOffset; i <startOffset + 8; i++) {
+            buffer[i] = (byte) (ntpTimestamp >>> (8 * (7 - i)));
         }
     }
 }
