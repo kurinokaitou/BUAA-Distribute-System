@@ -11,8 +11,12 @@ import TimeServiceClient_Library.NTP_Client;    // The import for the libray (Ti
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.BufferedReader;
+import java.io.IOException;
 import java.net.*;
 import javax.swing.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Timer;
 import java.util.TimerTask;
 import javax.swing.event.ListSelectionEvent;
@@ -27,6 +31,10 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
     Timer m_Timer_SendNTPRequests;
     DefaultListModel m_listModel_NTPServerList; // For use with JList
     DefaultListModel m_listModel_LocationList; // For use with JList
+    DefaultListModel m_listModel_StatusList;
+    DefaultListModel m_listModel_OffsetList;
+    int currentSelectedIndex = 0;
+    int lastSelectedIndex = 0;
     ListSelectionListener m_SelectionListener_NTPServerURLs;
 
     public TimeServiceClient_GUI_uses_library()
@@ -36,7 +44,11 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
             public void valueChanged(ListSelectionEvent listSelectionEvent)
             {
                 int iSelectionIndex = jList_NTPServerURLs.getSelectedIndex();
+                lastSelectedIndex = currentSelectedIndex;
+                currentSelectedIndex = iSelectionIndex;
                 jList_NTPServerLocations.setSelectedIndex(iSelectionIndex);
+                jList_NTPServerStatus.setSelectedIndex(iSelectionIndex);
+                jList_NTPServerOffset.setSelectedIndex(iSelectionIndex);
                 Get_ServerURL_listBox_Selection();
                 jTextField_UNIX_Time.setText("");
                 jTextField_UTC_Time.setText("");
@@ -47,7 +59,8 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
         };
         m_listModel_NTPServerList = new DefaultListModel(); // For use with jList_NTPServerURLs
         m_listModel_LocationList = new DefaultListModel(); // For use with jList_NTPServerLocations
-        
+        m_listModel_StatusList = new DefaultListModel();
+        m_listModel_OffsetList = new DefaultListModel();
         initComponents();
         Populate_NTP_Server_List();
 
@@ -78,7 +91,11 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
         jList_NTPServerURLs.setEnabled(true);
         JScrollPane_NTPServerURLs.setEnabled(true);
         jList_NTPServerLocations.setEnabled(false);
+        jList_NTPServerStatus.setEnabled(false);
+        jList_NTPServerOffset.setEnabled(false);
         JScrollPane_NTPServerLocations.setEnabled(false);
+        JScrollPane_NTPServerStatus.setEnabled(false);
+        JScrollPane_NTPServerOffset.setEnabled(false);
         jButton_StartNTPClient.setEnabled(true);
         jButton_Done.setEnabled(true); 
         Initialise_ServerURL_listBox(); // Selects first item in list boxes, by default
@@ -106,14 +123,17 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
                     String sUTC_Time = String.format("%02d:%02d:%02d", NTP_Timestamp.lHour, NTP_Timestamp.lMinute, NTP_Timestamp.lSecond);
                     jTextField_UTC_Time.setText(sUTC_Time);
                     UpdateStatisticsDisplay();
+                    UpdateList(true, NTP_Timestamp.localClockOffset);
                     break;
                 case NTP_ServerAddressNotSet:
                     break;
                 case NTP_SendFailed:
+                    UpdateList(false, 0);
                     break;
                 case NTP_ReceiveFailed:
                     m_iNumRequestsSent++;
                     UpdateStatisticsDisplay();
+                    UpdateList(false, 0);
                     break;
             }
         }
@@ -121,37 +141,56 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
 
     void Populate_NTP_Server_List()
     {
-        m_listModel_NTPServerList.addElement("time.nist.gov");
-        m_listModel_LocationList.addElement("NIST round robin load equalisation");
-        m_listModel_NTPServerList.addElement("time.windows.com");
-        m_listModel_LocationList.addElement("Windows Time service");
-        m_listModel_NTPServerList.addElement("nist1-atl.ustiming.org");
-        m_listModel_LocationList.addElement("Atlanta, Georgia");
-        m_listModel_NTPServerList.addElement("wolfnisttime.com");
-        m_listModel_LocationList.addElement("Birmingham, Alabama");
-        m_listModel_NTPServerList.addElement("nist1-chi.ustiming.org");
-        m_listModel_LocationList.addElement("Chicago, Illinois");
-        m_listModel_NTPServerList.addElement("nist1-lnk.binary.net");
-        m_listModel_LocationList.addElement("Lincoln, Nebraska");
-        m_listModel_NTPServerList.addElement("time-a.timefreq.bldrdoc.gov");
-        m_listModel_LocationList.addElement("NIST, Boulder, Colorado");
-        m_listModel_NTPServerList.addElement("ntp-nist.ldsbc.edu");
-        m_listModel_LocationList.addElement("LDSBC, Salt Lake City, Utah");
-        m_listModel_NTPServerList.addElement("nist1-lv.ustiming.org");
-        m_listModel_LocationList.addElement("Las Vegas, Nevada");  
-        m_listModel_NTPServerList.addElement("nist1-la.ustiming.org");
-        m_listModel_LocationList.addElement("Los Angeles, California");
-        m_listModel_NTPServerList.addElement("nist1-ny.ustiming.org");
-        m_listModel_LocationList.addElement("New York City, NY");
-        m_listModel_NTPServerList.addElement("nist1-nj.ustiming.org");
-        m_listModel_LocationList.addElement("Bridgewater, NJ");
+        try (BufferedReader br = Files.newBufferedReader(Paths.get("source.csv"))) {
+            String DELIMITER = ",";
+            String line;
+            while ((line = br.readLine()) != null) {
+                String[] columns = line.split(DELIMITER);
+                if(columns.length == 2) {
+                    m_listModel_NTPServerList.addElement(columns[0].trim());
+                    m_listModel_LocationList.addElement(columns[1].trim());
+                    m_listModel_StatusList.addElement("Pending");
+                    m_listModel_OffsetList.addElement("--");
+                }
+            }
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+//        m_listModel_NTPServerList.addElement("time.nist.gov");
+//        m_listModel_LocationList.addElement("NIST round robin load equalisation");
+//        m_listModel_NTPServerList.addElement("time.windows.com");
+//        m_listModel_LocationList.addElement("Windows Time service");
+//        m_listModel_NTPServerList.addElement("nist1-atl.ustiming.org");
+//        m_listModel_LocationList.addElement("Atlanta, Georgia");
+//        m_listModel_NTPServerList.addElement("wolfnisttime.com");
+//        m_listModel_LocationList.addElement("Birmingham, Alabama");
+//        m_listModel_NTPServerList.addElement("nist1-chi.ustiming.org");
+//        m_listModel_LocationList.addElement("Chicago, Illinois");
+//        m_listModel_NTPServerList.addElement("nist1-lnk.binary.net");
+//        m_listModel_LocationList.addElement("Lincoln, Nebraska");
+//        m_listModel_NTPServerList.addElement("time-a.timefreq.bldrdoc.gov");
+//        m_listModel_LocationList.addElement("NIST, Boulder, Colorado");
+//        m_listModel_NTPServerList.addElement("ntp-nist.ldsbc.edu");
+//        m_listModel_LocationList.addElement("LDSBC, Salt Lake City, Utah");
+//        m_listModel_NTPServerList.addElement("nist1-lv.ustiming.org");
+//        m_listModel_LocationList.addElement("Las Vegas, Nevada");
+//        m_listModel_NTPServerList.addElement("nist1-la.ustiming.org");
+//        m_listModel_LocationList.addElement("Los Angeles, California");
+//        m_listModel_NTPServerList.addElement("nist1-ny.ustiming.org");
+//        m_listModel_LocationList.addElement("New York City, NY");
+//        m_listModel_NTPServerList.addElement("nist1-nj.ustiming.org");
+//        m_listModel_LocationList.addElement("Bridgewater, NJ");
     }
 
     private void Initialise_ServerURL_listBox()
     {
         jList_NTPServerURLs.setSelectedIndex(0);
         jList_NTPServerLocations.setSelectedIndex(0);
+        jList_NTPServerStatus.setSelectedIndex(0);
+        jList_NTPServerOffset.setSelectedIndex(0);
         Get_ServerURL_listBox_Selection();
+        currentSelectedIndex = 0;
+        lastSelectedIndex = 0;
     }
 
     private void Get_ServerURL_listBox_Selection()
@@ -166,11 +205,13 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
         InetAddress TimeService_IPAddress = m_NTP_Client.SetUp_TimeService_AddressStruct(sURL);
         if(null != TimeService_IPAddress)
         {
+            m_listModel_StatusList.set(currentSelectedIndex, "Ready");
             jTextField_ServerIPAddress.setText(TimeService_IPAddress.getHostAddress());
             jTextField_Port.setText(Integer.toString(m_NTP_Client.GetPort()));
         }
         else
         {
+            m_listModel_StatusList.set(currentSelectedIndex, "Not Found");
             jTextField_ServerIPAddress.setText("Not found");
             jTextField_Port.setText("");
         }
@@ -180,6 +221,16 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
     {
         jTextField_NumRequestsSent.setText(Integer.toString(m_iNumRequestsSent));
         jTextField_NumResponsesReceived.setText(Integer.toString(m_iNumResponsesReceived));
+    }
+
+    void UpdateList(boolean success, long offset){
+        if(success){
+            m_listModel_StatusList.set(currentSelectedIndex, "Success");
+            m_listModel_OffsetList.set(currentSelectedIndex, offset+"ms");
+
+        } else {
+            m_listModel_StatusList.set(currentSelectedIndex, "Fail");
+        }
     }
 
     void StopTimer()
@@ -272,10 +323,16 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
     private JLabel jLabel_NIST_Servers;
     private JLabel jLabel_NTPServerURLs;
     private JLabel jLabel_NTPServerLocations;
+    private JLabel jLabel_NTPServerStatus;
+    private JLabel jLabel_NTPServerOffset;
     private JList jList_NTPServerURLs;
     private JScrollPane JScrollPane_NTPServerURLs;
     private JList jList_NTPServerLocations;
     private JScrollPane JScrollPane_NTPServerLocations;
+    private JList jList_NTPServerStatus;
+    private JScrollPane JScrollPane_NTPServerStatus;
+    private JList jList_NTPServerOffset;
+    private JScrollPane JScrollPane_NTPServerOffset;
     private JPanel jPanel_Controls;
     private JButton jButton_StartNTPClient;
     private JButton jButton_Done;
@@ -395,6 +452,10 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
         jLabel_NTPServerURLs.setText("NTP Server URLs");
         jLabel_NTPServerLocations = new JLabel();
         jLabel_NTPServerLocations.setText("Location / description");
+        jLabel_NTPServerStatus = new JLabel();
+        jLabel_NTPServerStatus.setText("Status");
+        jLabel_NTPServerOffset = new JLabel();
+        jLabel_NTPServerOffset.setText("Local Offset");
         jList_NTPServerURLs = new JList(m_listModel_NTPServerList);
         jList_NTPServerURLs.setMaximumSize(new Dimension(300, 250));
         jList_NTPServerURLs.setSelectedIndex(0);
@@ -404,11 +465,27 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
                 ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, 
                 ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         jList_NTPServerLocations = new JList(m_listModel_LocationList);
-        jList_NTPServerLocations.setMaximumSize(new Dimension(300, 250));
+        jList_NTPServerLocations.setMaximumSize(new Dimension(270, 250));
         jList_NTPServerLocations.setSelectedIndex(0);
         jList_NTPServerLocations.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         JScrollPane_NTPServerLocations = new javax.swing.JScrollPane(jList_NTPServerLocations,
                 ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, 
+                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        // status
+        jList_NTPServerStatus = new JList(m_listModel_StatusList);
+        jList_NTPServerStatus.setMaximumSize(new Dimension(20, 250));
+        jList_NTPServerStatus.setSelectedIndex(0);
+        jList_NTPServerStatus.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        JScrollPane_NTPServerStatus = new javax.swing.JScrollPane(jList_NTPServerStatus,
+                ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
+                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        // offset
+        jList_NTPServerOffset = new JList(m_listModel_OffsetList);
+        jList_NTPServerOffset.setMaximumSize(new Dimension(10, 250));
+        jList_NTPServerOffset.setSelectedIndex(0);
+        jList_NTPServerOffset.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        JScrollPane_NTPServerOffset = new javax.swing.JScrollPane(jList_NTPServerOffset,
+                ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
                 ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 
         jPanel_NTPServerSelection = new JPanel();
@@ -426,7 +503,14 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
                     .add(JScrollPane_NTPServerURLs))
                     .add(jPanel3Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.CENTER)
                     .add(jLabel_NTPServerLocations)
-                    .add(JScrollPane_NTPServerLocations))));
+                    .add(JScrollPane_NTPServerLocations))
+                    .add(jPanel3Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.CENTER)
+                    .add(jLabel_NTPServerStatus)
+                    .add(JScrollPane_NTPServerStatus))
+                    .add(jPanel3Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.CENTER)
+                    .add(jLabel_NTPServerOffset)
+                    .add(JScrollPane_NTPServerOffset))
+                ));
         jPanel3Layout.setVerticalGroup(
             jPanel3Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.CENTER)
                 .add(jPanel3Layout.createSequentialGroup()
@@ -437,8 +521,15 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
                             .add(jLabel_NTPServerURLs)
                             .add(JScrollPane_NTPServerURLs))
                         .add(jPanel3Layout.createSequentialGroup()
-                            .add(jLabel_NTPServerLocations)
-                            .add(JScrollPane_NTPServerLocations)))));
+                               .add(jLabel_NTPServerLocations)
+                               .add(JScrollPane_NTPServerLocations))
+                        .add(jPanel3Layout.createSequentialGroup()
+                            .add(jLabel_NTPServerStatus)
+                            .add(JScrollPane_NTPServerStatus))
+                        .add(jPanel3Layout.createSequentialGroup()
+                            .add(jLabel_NTPServerOffset)
+                            .add(JScrollPane_NTPServerOffset))
+                    )));
 
         jButton_StartNTPClient = new JButton();
         jButton_StartNTPClient.setText("START NTP requests");

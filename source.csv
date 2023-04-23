@@ -1,0 +1,11 @@
+time.windows.com, Windows授时服务
+time.pool.aliyun.com, 阿里云公共授时服务
+time1.google.com, 谷歌公共授时服务
+ntp.ntsc.ac.cn, 国家授时中心
+cn.ntp.org.cn, 中国 NTP 快速授时服务
+cn.pool.ntp.org, 国际 NTP 快速授时服务
+edu.ntp.org.cn, 教育网
+hk.ntp.org.cn, 香港地区
+jp.ntp.org.cn, 日本地区
+us.ntp.org.cn, 美国地区
+de.ntp.org.cn, 德国地区
