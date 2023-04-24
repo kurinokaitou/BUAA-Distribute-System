@@ -28,6 +28,9 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
     
     int m_iNumRequestsSent;
     int m_iNumResponsesReceived;
+    long m_currentStratum;
+    long m_currentPoll;
+    long m_currentPrecision;
     Timer m_Timer_SendNTPRequests;
     DefaultListModel m_listModel_NTPServerList; // For use with JList
     DefaultListModel m_listModel_LocationList; // For use with JList
@@ -53,6 +56,9 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
                 jList_NTPServerDelay.setSelectedIndex(iSelectionIndex);
 
                 Get_ServerURL_listBox_Selection();
+                jTextField_Stratum.setText("");
+                jTextField_Poll.setText("");
+                jTextField_Precision.setText("");
                 jTextField_UNIX_Time.setText("");
                 jTextField_UTC_Time.setText("");
                 m_iNumRequestsSent = 0;
@@ -88,6 +94,9 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
         jTextField_URL.setEnabled(false);
         jTextField_Port.setEnabled(false);
         jTextField_ServerIPAddress.setEnabled(false);
+        jTextField_Stratum.setEnabled(false);
+        jTextField_Poll.setEnabled(false);
+        jTextField_Precision.setEnabled(false);
         jTextField_UNIX_Time.setEnabled(false);
         jTextField_UTC_Time.setEnabled(false);
         jTextField_NumRequestsSent.setEnabled(false);
@@ -125,6 +134,9 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
                 case NTP_Success:
                     m_iNumRequestsSent++;
                     m_iNumResponsesReceived++;
+                    jTextField_Stratum.setText(Long.toString(NTP_Timestamp.stratum));
+                    jTextField_Poll.setText(Long.toString(NTP_Timestamp.poll));
+                    jTextField_Precision.setText(Long.toString(NTP_Timestamp.precision));
                     jTextField_UNIX_Time.setText(Long.toString(NTP_Timestamp.lUnixTime));
                     String sUTC_Time = String.format("%02d:%02d:%02d", NTP_Timestamp.lHour, NTP_Timestamp.lMinute, NTP_Timestamp.lSecond);
                     jTextField_UTC_Time.setText(sUTC_Time);
@@ -320,6 +332,12 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
     private JLabel jLabel_ServerIPAddress;
     private JTextField jTextField_ServerIPAddress;
     private JPanel jPanel_Time_Status;
+    private JLabel jLabel_Stratum;
+    private JTextField jTextField_Stratum;
+    private JLabel jLabel_Poll;
+    private JTextField jTextField_Poll;
+    private JLabel jLabel_Precision;
+    private JTextField jTextField_Precision;
     private JLabel jLabel_UNIX_Time;
     private JTextField jTextField_UNIX_Time;
     private JLabel jLabel_UTC_Time;
@@ -400,7 +418,25 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
                     .add(jPanel1Layout.createParallelGroup()
                         .add(jLabel_ServerIPAddress)
                         .add(jTextField_ServerIPAddress))));
-                
+        // stratum
+        jLabel_Stratum = new JLabel();
+        jLabel_Stratum.setText("Stratum");
+        jTextField_Stratum = new JTextField();
+        jTextField_Stratum.setMaximumSize(new Dimension(120, 4));
+        jTextField_Stratum.setHorizontalAlignment(JTextField.CENTER);
+        // poll
+        jLabel_Poll = new JLabel();
+        jLabel_Poll.setText("Poll");
+        jTextField_Poll = new JTextField();
+        jTextField_Poll.setMaximumSize(new Dimension(120, 4));
+        jTextField_Poll.setHorizontalAlignment(JTextField.CENTER);
+        // precision
+        jLabel_Precision = new JLabel();
+        jLabel_Precision.setText("Precision");
+        jTextField_Precision = new JTextField();
+        jTextField_Precision.setMaximumSize(new Dimension(120, 4));
+        jTextField_Precision.setHorizontalAlignment(JTextField.CENTER);
+
         jLabel_UNIX_Time = new JLabel();
         jLabel_UNIX_Time.setText("UNIX time");
         jTextField_UNIX_Time = new JTextField();
@@ -430,6 +466,18 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
         jPanel2Layout.setHorizontalGroup(
             jPanel2Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.CENTER)
                 .add(jPanel2Layout.createSequentialGroup()
+                    .add(jLabel_Stratum)
+                    .addContainerGap(10, 10)
+                    .add(jTextField_Stratum))
+                .add(jPanel2Layout.createSequentialGroup()
+                    .add(jLabel_Poll)
+                    .addContainerGap(10, 10)
+                    .add(jTextField_Poll))
+                .add(jPanel2Layout.createSequentialGroup()
+                    .add(jLabel_Precision)
+                    .addContainerGap(10, 10)
+                    .add(jTextField_Precision))
+                .add(jPanel2Layout.createSequentialGroup()
                     .add(jLabel_UNIX_Time)
                     .addContainerGap(10, 10)
                     .add(jTextField_UNIX_Time))
@@ -445,16 +493,28 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
             jPanel2Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.CENTER)
                 .add(jPanel2Layout.createSequentialGroup()
                     .add(jPanel2Layout.createParallelGroup()
+                         .add(jLabel_Stratum)
+                         .add(jTextField_Stratum))
+                    .addContainerGap(10, 10)
+                    .add(jPanel2Layout.createParallelGroup()
+                         .add(jLabel_Poll)
+                         .add(jTextField_Poll))
+                    .addContainerGap(10, 10)
+                    .add(jPanel2Layout.createParallelGroup()
+                         .add(jLabel_Precision)
+                         .add(jTextField_Precision))
+                    .addContainerGap(10, 10)
+                    .add(jPanel2Layout.createParallelGroup()
                         .add(jLabel_UNIX_Time)
                         .add(jTextField_UNIX_Time))
-                    .addContainerGap(20, 20)
+                    .addContainerGap(10, 10)
                     .add(jPanel2Layout.createParallelGroup()
                         .add(jLabel_UTC_Time)
                         .add(jTextField_UTC_Time))
-                    .addContainerGap(20, 20)
+                    .addContainerGap(10, 10)
                     .add(jLabel_NumRequestsSent)
                     .add(jTextField_NumRequestsSent)
-                    .addContainerGap(20, 20)
+                    .addContainerGap(10, 10)
                     .add(jLabel_NumResponsesReceived)
                     .add(jTextField_NumResponsesReceived)));
                 

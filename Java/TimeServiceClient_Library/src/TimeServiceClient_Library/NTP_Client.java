@@ -31,7 +31,7 @@ public class NTP_Client
         public NTP_Client_ResultCode eResultCode;
         public int stratum;
         public int poll;
-        public int presicion;
+        public int precision;
         public int rootDelay;
         public int rootDispersion;
         public long refTimestamp;
@@ -177,7 +177,7 @@ public class NTP_Client
         {   // The timestamp starts at byte 40 of the received packet and is four bytes,
             ntpData.stratum = Resolve_NTP(bRecvBuf, 1, 1);
             ntpData.poll = Resolve_NTP(bRecvBuf, 2, 1);
-            ntpData.presicion = Resolve_NTP(bRecvBuf, 3, 1);
+            ntpData.precision = Resolve_NTP(bRecvBuf, 3, 1);
             ntpData.rootDelay = Resolve_NTP(bRecvBuf, 4, 4);
             ntpData.rootDispersion = Resolve_NTP(bRecvBuf, 8, 4);
             ntpData.refTimestamp = Resolve_NTP_Timestamp_Miliseconds(bRecvBuf, 16);
