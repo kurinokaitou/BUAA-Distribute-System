@@ -17,8 +17,8 @@ import java.net.*;
 import javax.swing.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.*;
 import java.util.Timer;
-import java.util.TimerTask;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
     
@@ -28,25 +28,22 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
     
     int m_iNumRequestsSent;
     int m_iNumResponsesReceived;
-    long m_currentStratum;
-    long m_currentPoll;
-    long m_currentPrecision;
     Timer m_Timer_SendNTPRequests;
+    Map<String, List<Long>> sourcesOffsetHistory;
     DefaultListModel m_listModel_NTPServerList; // For use with JList
     DefaultListModel m_listModel_LocationList; // For use with JList
     DefaultListModel m_listModel_StatusList;
     DefaultListModel m_listModel_OffsetList;
     DefaultListModel m_listModel_DelayList;
+    DefaultListModel m_listModel_JitterList;
     int currentSelectedIndex = 0;
     int lastSelectedIndex = 0;
     ListSelectionListener m_SelectionListener_NTPServerURLs;
 
-    public TimeServiceClient_GUI_uses_library()
-    {
+    public TimeServiceClient_GUI_uses_library() {
         m_SelectionListener_NTPServerURLs = new ListSelectionListener() // Listener for the 'URL selection changed' event
         {
-            public void valueChanged(ListSelectionEvent listSelectionEvent)
-            {
+            public void valueChanged(ListSelectionEvent listSelectionEvent) {
                 int iSelectionIndex = jList_NTPServerURLs.getSelectedIndex();
                 lastSelectedIndex = currentSelectedIndex;
                 currentSelectedIndex = iSelectionIndex;
@@ -54,6 +51,7 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
                 jList_NTPServerStatus.setSelectedIndex(iSelectionIndex);
                 jList_NTPServerOffset.setSelectedIndex(iSelectionIndex);
                 jList_NTPServerDelay.setSelectedIndex(iSelectionIndex);
+                jList_NTPServerJitter.setSelectedIndex(iSelectionIndex);
 
                 Get_ServerURL_listBox_Selection();
                 jTextField_Stratum.setText("");
@@ -66,18 +64,20 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
                 UpdateStatisticsDisplay();
             }
         };
+        sourcesOffsetHistory = new HashMap<>();
+
         m_listModel_NTPServerList = new DefaultListModel(); // For use with jList_NTPServerURLs
         m_listModel_LocationList = new DefaultListModel(); // For use with jList_NTPServerLocations
         m_listModel_StatusList = new DefaultListModel();
         m_listModel_OffsetList = new DefaultListModel();
         m_listModel_DelayList = new DefaultListModel();
+        m_listModel_JitterList = new DefaultListModel();
         initComponents();
         Populate_NTP_Server_List();
 
         m_NTP_Client = new NTP_Client();
         Boolean bSocketOpenSuccess = m_NTP_Client.CreateSocket();
-        if (false == bSocketOpenSuccess)
-        {
+        if (false == bSocketOpenSuccess) {
             JOptionPane.showMessageDialog(null, "Error creating socket", "NTP client", JOptionPane.PLAIN_MESSAGE);
             CloseSocketAndExit();
         }
@@ -107,10 +107,12 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
         jList_NTPServerStatus.setEnabled(false);
         jList_NTPServerOffset.setEnabled(false);
         jList_NTPServerDelay.setEnabled(false);
-        JScrollPane_NTPServerLocations.setEnabled(false);
-        JScrollPane_NTPServerStatus.setEnabled(false);
-        JScrollPane_NTPServerOffset.setEnabled(false);
-        JScrollPane_NTPServerDelay.setEnabled(false);
+        jList_NTPServerJitter.setEnabled(false);
+        jScrollPane_NTPServerLocations.setEnabled(false);
+        jScrollPane_NTPServerStatus.setEnabled(false);
+        jScrollPane_NTPServerOffset.setEnabled(false);
+        jScrollPane_NTPServerDelay.setEnabled(false);
+        jScrollPane_NTPServerJitter.setEnabled(false);
         jTextField_Source.setEnabled(true);
         jTextField_Source.setToolTipText("Enter the source URL/IP");
         jTextField_Description.setEnabled(true);
@@ -119,6 +121,31 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
         jButton_StartNTPClient.setEnabled(true);
         jButton_Done.setEnabled(true); 
         Initialise_ServerURL_listBox(); // Selects first item in list boxes, by default
+    }
+
+    private void Record_Source_Clock_Offset_History(long offset){
+        String currentServerName = jTextField_Source.getText();
+        if(sourcesOffsetHistory.containsKey(currentServerName)){
+            sourcesOffsetHistory.get(currentServerName).add(offset);
+        } else {
+            List<Long> newList = new ArrayList<>();
+            newList.add(offset);
+            sourcesOffsetHistory.put(currentServerName, newList);
+        }
+    }
+
+    public static double Calculate_Jitter(List<Long> localClockOffsets) {
+        if (localClockOffsets == null || localClockOffsets.size() < 2) {
+            return 0d;
+        }
+        double sumTimeDifferences = 0.0;
+        int timeDifferenceCount = 0;
+        for (int i = 1; i < localClockOffsets.size(); i++) {
+            double currentTimeDifference = Math.abs(localClockOffsets.get(i) - localClockOffsets.get(i - 1));
+            sumTimeDifferences += currentTimeDifference;
+            timeDifferenceCount++;
+        }
+        return sumTimeDifferences / timeDifferenceCount;
     }
         
     void Start_Timer_SendNTPRequests()
@@ -143,20 +170,26 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
                     jTextField_Poll.setText(Long.toString(NTP_Timestamp.poll));
                     jTextField_Precision.setText(Long.toString(NTP_Timestamp.precision));
                     jTextField_UNIX_Time.setText(Long.toString(NTP_Timestamp.lUnixTime));
-                    String sUTC_Time = String.format("%02d:%02d:%02d", NTP_Timestamp.lHour, NTP_Timestamp.lMinute, NTP_Timestamp.lSecond);
+                    String sUTC_Time = String.format("%02d:%02d:%02d.%03d", NTP_Timestamp.lHour, NTP_Timestamp.lMinute, NTP_Timestamp.lSecond, NTP_Timestamp.lMilisecond);
                     jTextField_UTC_Time.setText(sUTC_Time);
+                    Record_Source_Clock_Offset_History(NTP_Timestamp.localClockOffset);
+                    List<Long> record = sourcesOffsetHistory.get(jTextField_Source.getText());
+                    double jitter = 0;
                     UpdateStatisticsDisplay();
-                    UpdateList(true, NTP_Timestamp.localClockOffset, NTP_Timestamp.roundTripDelay);
+                    if(record != null){
+                        jitter = Calculate_Jitter(record);
+                    }
+                    UpdateList(true, NTP_Timestamp.localClockOffset, NTP_Timestamp.roundTripDelay, jitter);
                     break;
                 case NTP_ServerAddressNotSet:
                     break;
                 case NTP_SendFailed:
-                    UpdateList(false, 0, 0);
+                    UpdateList(false, 0, 0, 0);
                     break;
                 case NTP_ReceiveFailed:
                     m_iNumRequestsSent++;
                     UpdateStatisticsDisplay();
-                    UpdateList(false, 0, 0);
+                    UpdateList(false, 0, 0, 0);
                     break;
             }
         }
@@ -168,6 +201,7 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
         m_listModel_StatusList.addElement("Pending");
         m_listModel_OffsetList.addElement("--");
         m_listModel_DelayList.addElement("--");
+        m_listModel_JitterList.addElement("--");
     }
 
     void Populate_NTP_Server_List()
@@ -217,6 +251,7 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
         jList_NTPServerStatus.setSelectedIndex(0);
         jList_NTPServerOffset.setSelectedIndex(0);
         jList_NTPServerDelay.setSelectedIndex(0);
+        jList_NTPServerJitter.setSelectedIndex(0);
         Get_ServerURL_listBox_Selection();
         currentSelectedIndex = 0;
         lastSelectedIndex = 0;
@@ -252,12 +287,12 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
         jTextField_NumResponsesReceived.setText(Integer.toString(m_iNumResponsesReceived));
     }
 
-    void UpdateList(boolean success, long offset, long delay){
+    void UpdateList(boolean success, long offset, long delay, double jitter){
         if(success){
             m_listModel_StatusList.set(currentSelectedIndex, "Success");
             m_listModel_OffsetList.set(currentSelectedIndex, offset+"ms");
             m_listModel_DelayList.set(currentSelectedIndex, delay+"ms");
-
+            m_listModel_JitterList.set(currentSelectedIndex, String.format("%.02f",jitter));
         } else {
             m_listModel_StatusList.set(currentSelectedIndex, "Fail");
         }
@@ -365,16 +400,19 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
     private JLabel jLabel_NTPServerStatus;
     private JLabel jLabel_NTPServerOffset;
     private JLabel jLabel_NTPServerDelay;
+    private JLabel jLabel_NTPServerJitter;
     private JList jList_NTPServerURLs;
     private JScrollPane JScrollPane_NTPServerURLs;
     private JList jList_NTPServerLocations;
-    private JScrollPane JScrollPane_NTPServerLocations;
+    private JScrollPane jScrollPane_NTPServerLocations;
     private JList jList_NTPServerStatus;
-    private JScrollPane JScrollPane_NTPServerStatus;
+    private JScrollPane jScrollPane_NTPServerStatus;
     private JList jList_NTPServerOffset;
-    private JScrollPane JScrollPane_NTPServerOffset;
+    private JScrollPane jScrollPane_NTPServerOffset;
     private JList jList_NTPServerDelay;
-    private JScrollPane JScrollPane_NTPServerDelay;
+    private JScrollPane jScrollPane_NTPServerDelay;
+    private JList jList_NTPServerJitter;
+    private JScrollPane jScrollPane_NTPServerJitter;
     private JPanel jPanel_AddSource;
     private JTextField jTextField_URL_OR_IP;
     private JTextField jTextField_Description;
@@ -546,6 +584,8 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
         jLabel_NTPServerOffset.setText("Local Offset");
         jLabel_NTPServerDelay = new JLabel();
         jLabel_NTPServerDelay.setText("RTT Delay");
+        jLabel_NTPServerJitter = new JLabel();
+        jLabel_NTPServerJitter.setText("Jittery");
         jList_NTPServerURLs = new JList(m_listModel_NTPServerList);
         jList_NTPServerURLs.setMaximumSize(new Dimension(300, 250));
         jList_NTPServerURLs.setSelectedIndex(0);
@@ -558,7 +598,7 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
         jList_NTPServerLocations.setMaximumSize(new Dimension(260, 250));
         jList_NTPServerLocations.setSelectedIndex(0);
         jList_NTPServerLocations.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        JScrollPane_NTPServerLocations = new javax.swing.JScrollPane(jList_NTPServerLocations,
+        jScrollPane_NTPServerLocations = new javax.swing.JScrollPane(jList_NTPServerLocations,
                 ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, 
                 ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         // status
@@ -566,7 +606,7 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
         jList_NTPServerStatus.setMaximumSize(new Dimension(20, 250));
         jList_NTPServerStatus.setSelectedIndex(0);
         jList_NTPServerStatus.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        JScrollPane_NTPServerStatus = new javax.swing.JScrollPane(jList_NTPServerStatus,
+        jScrollPane_NTPServerStatus = new javax.swing.JScrollPane(jList_NTPServerStatus,
                 ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
                 ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         // offset
@@ -574,7 +614,7 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
         jList_NTPServerOffset.setMaximumSize(new Dimension(10, 250));
         jList_NTPServerOffset.setSelectedIndex(0);
         jList_NTPServerOffset.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        JScrollPane_NTPServerOffset = new javax.swing.JScrollPane(jList_NTPServerOffset,
+        jScrollPane_NTPServerOffset = new javax.swing.JScrollPane(jList_NTPServerOffset,
                 ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
                 ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         // delay
@@ -582,7 +622,15 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
         jList_NTPServerDelay.setMaximumSize(new Dimension(10, 250));
         jList_NTPServerDelay.setSelectedIndex(0);
         jList_NTPServerDelay.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        JScrollPane_NTPServerDelay = new javax.swing.JScrollPane(jList_NTPServerDelay,
+        jScrollPane_NTPServerDelay = new javax.swing.JScrollPane(jList_NTPServerDelay,
+                ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
+                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        // jitter
+        jList_NTPServerJitter = new JList(m_listModel_JitterList);
+        jList_NTPServerJitter.setMaximumSize(new Dimension(10, 250));
+        jList_NTPServerJitter.setSelectedIndex(0);
+        jList_NTPServerJitter.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        jScrollPane_NTPServerJitter = new javax.swing.JScrollPane(jList_NTPServerJitter,
                 ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
                 ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 
@@ -601,16 +649,19 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
                     .add(JScrollPane_NTPServerURLs))
                     .add(jPanel3Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.CENTER)
                     .add(jLabel_NTPServerLocations)
-                    .add(JScrollPane_NTPServerLocations))
+                    .add(jScrollPane_NTPServerLocations))
                     .add(jPanel3Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.CENTER)
                     .add(jLabel_NTPServerStatus)
-                    .add(JScrollPane_NTPServerStatus))
+                    .add(jScrollPane_NTPServerStatus))
                     .add(jPanel3Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.CENTER)
                     .add(jLabel_NTPServerOffset)
-                    .add(JScrollPane_NTPServerOffset))
+                    .add(jScrollPane_NTPServerOffset))
                     .add(jPanel3Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.CENTER)
                     .add(jLabel_NTPServerDelay)
-                    .add(JScrollPane_NTPServerDelay))
+                    .add(jScrollPane_NTPServerDelay))
+                    .add(jPanel3Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.CENTER)
+                    .add(jLabel_NTPServerJitter)
+                    .add(jScrollPane_NTPServerJitter))
                 ));
         jPanel3Layout.setVerticalGroup(
             jPanel3Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.CENTER)
@@ -623,16 +674,19 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
                             .add(JScrollPane_NTPServerURLs))
                         .add(jPanel3Layout.createSequentialGroup()
                                .add(jLabel_NTPServerLocations)
-                               .add(JScrollPane_NTPServerLocations))
+                               .add(jScrollPane_NTPServerLocations))
                         .add(jPanel3Layout.createSequentialGroup()
                             .add(jLabel_NTPServerStatus)
-                            .add(JScrollPane_NTPServerStatus))
+                            .add(jScrollPane_NTPServerStatus))
                         .add(jPanel3Layout.createSequentialGroup()
                             .add(jLabel_NTPServerOffset)
-                            .add(JScrollPane_NTPServerOffset))
+                            .add(jScrollPane_NTPServerOffset))
                         .add(jPanel3Layout.createSequentialGroup()
                             .add(jLabel_NTPServerDelay)
-                            .add(JScrollPane_NTPServerDelay))
+                            .add(jScrollPane_NTPServerDelay))
+                        .add(jPanel3Layout.createSequentialGroup()
+                            .add(jLabel_NTPServerJitter)
+                            .add(jScrollPane_NTPServerJitter))
                     )));
         // Add Source
         jTextField_URL_OR_IP = new JTextField();
