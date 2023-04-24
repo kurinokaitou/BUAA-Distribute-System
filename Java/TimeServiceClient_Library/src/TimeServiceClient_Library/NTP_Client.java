@@ -224,7 +224,7 @@ public class NTP_Client
     private static int Resolve_NTP(byte[] buffer, int startOffset, int byteCount){
         int num = 0;
         for(int i = 0; i < byteCount; i++){
-            num += ((long) buffer[startOffset+i] & 0xFF) << (3-i)*8;
+            num += ((int) buffer[startOffset+i] & 0xFF) << (byteCount-1-i)*8;
         }
         return num;
     }
@@ -252,4 +252,12 @@ public class NTP_Client
             buffer[i] = (byte) (ntpTimestamp >>> (8 * (7 - i)));
         }
     }
+
+//    public static void main(String[] args){
+//        int a = 65537;
+//        byte[] arr = new byte[4];
+//        arr[1] = (byte)(a & 0xFF);
+//        arr[0] = (byte)((a >> 8) & 0xFF);
+//        System.out.println(Resolve_NTP(arr, 0, 2));
+//    }
 }

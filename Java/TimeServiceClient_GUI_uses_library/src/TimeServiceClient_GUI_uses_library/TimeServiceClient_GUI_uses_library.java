@@ -91,7 +91,7 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
     private void InitialiseControls()    
     {    
         jPanel_NTPServerAddressDetails.setEnabled(false);
-        jTextField_URL.setEnabled(false);
+        jTextField_Source.setEnabled(false);
         jTextField_Port.setEnabled(false);
         jTextField_ServerIPAddress.setEnabled(false);
         jTextField_Stratum.setEnabled(false);
@@ -111,6 +111,11 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
         JScrollPane_NTPServerStatus.setEnabled(false);
         JScrollPane_NTPServerOffset.setEnabled(false);
         JScrollPane_NTPServerDelay.setEnabled(false);
+        jTextField_Source.setEnabled(true);
+        jTextField_Source.setToolTipText("Enter the source URL/IP");
+        jTextField_Description.setEnabled(true);
+        jTextField_Description.setToolTipText("Enter the source location/description");
+        jButton_AddSource.setEnabled(true);
         jButton_StartNTPClient.setEnabled(true);
         jButton_Done.setEnabled(true); 
         Initialise_ServerURL_listBox(); // Selects first item in list boxes, by default
@@ -157,6 +162,14 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
         }
     }
 
+    void SourceListAddElement(String source, String description){
+        m_listModel_NTPServerList.addElement(source);
+        m_listModel_LocationList.addElement(description);
+        m_listModel_StatusList.addElement("Pending");
+        m_listModel_OffsetList.addElement("--");
+        m_listModel_DelayList.addElement("--");
+    }
+
     void Populate_NTP_Server_List()
     {
         try (BufferedReader br = Files.newBufferedReader(Paths.get("source.csv"))) {
@@ -165,11 +178,7 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
             while ((line = br.readLine()) != null) {
                 String[] columns = line.split(DELIMITER);
                 if(columns.length == 2) {
-                    m_listModel_NTPServerList.addElement(columns[0].trim());
-                    m_listModel_LocationList.addElement(columns[1].trim());
-                    m_listModel_StatusList.addElement("Pending");
-                    m_listModel_OffsetList.addElement("--");
-                    m_listModel_DelayList.addElement("--");
+                    SourceListAddElement(columns[0].trim(),columns[1].trim());
                 }
             }
         } catch (IOException ex) {
@@ -216,7 +225,7 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
     private void Get_ServerURL_listBox_Selection()
     {
         String sSelectedURL = jList_NTPServerURLs.getSelectedValue().toString();
-        jTextField_URL.setText(sSelectedURL);
+        jTextField_Source.setText(sSelectedURL);
         SetUp_TimeService_AddressStruct(sSelectedURL);
     }
 
@@ -322,11 +331,14 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
                 StopTimer();
             }
         }
+        if(jButton_AddSource == e.getSource()){
+            SourceListAddElement(jTextField_URL_OR_IP.getText(), jTextField_Description.getText());
+        }
     }
        
     private JPanel jPanel_NTPServerAddressDetails;
     private JLabel jLabel_URL;
-    private JTextField jTextField_URL;
+    private JTextField jTextField_Source;
     private JLabel jLabel_Port;
     private JTextField jTextField_Port;
     private JLabel jLabel_ServerIPAddress;
@@ -363,6 +375,10 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
     private JScrollPane JScrollPane_NTPServerOffset;
     private JList jList_NTPServerDelay;
     private JScrollPane JScrollPane_NTPServerDelay;
+    private JPanel jPanel_AddSource;
+    private JTextField jTextField_URL_OR_IP;
+    private JTextField jTextField_Description;
+    private JButton jButton_AddSource;
     private JPanel jPanel_Controls;
     private JButton jButton_StartNTPClient;
     private JButton jButton_Done;
@@ -371,9 +387,9 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
     {
         jLabel_URL = new JLabel();
         jLabel_URL.setText("URL");
-        jTextField_URL = new JTextField();
-        jTextField_URL.setMaximumSize(new Dimension(250, 4));
-        jTextField_URL.setHorizontalAlignment(JTextField.CENTER);
+        jTextField_Source = new JTextField();
+        jTextField_Source.setMaximumSize(new Dimension(250, 4));
+        jTextField_Source.setHorizontalAlignment(JTextField.CENTER);
         jLabel_Port = new JLabel();
         jLabel_Port.setText("Port");
         jTextField_Port = new JTextField();
@@ -395,7 +411,7 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
                 .add(jPanel1Layout.createSequentialGroup()
                     .add(jLabel_URL)
                     .addContainerGap(10, 10)
-                    .add(jTextField_URL))
+                    .add(jTextField_Source))
                 .add(jPanel1Layout.createSequentialGroup()
                     .add(jLabel_Port)
                     .addContainerGap(10, 10)
@@ -409,7 +425,7 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
                 .add(jPanel1Layout.createSequentialGroup()
                     .add(jPanel1Layout.createParallelGroup()
                         .add(jLabel_URL)
-                        .add(jTextField_URL))
+                        .add(jTextField_Source))
                     .addContainerGap(20, 20)
                     .add(jPanel1Layout.createParallelGroup()
                         .add(jLabel_Port)
@@ -618,7 +634,37 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
                             .add(jLabel_NTPServerDelay)
                             .add(JScrollPane_NTPServerDelay))
                     )));
+        // Add Source
+        jTextField_URL_OR_IP = new JTextField();
+        jTextField_URL_OR_IP.setMaximumSize(new Dimension(250, 4));
+        jTextField_URL_OR_IP.setHorizontalAlignment(JTextField.CENTER);
+        jTextField_Description = new JTextField();
+        jTextField_Description.setMaximumSize(new Dimension(250, 4));
+        jTextField_Description.setHorizontalAlignment(JTextField.CENTER);
+        jButton_AddSource = new JButton();
+        jButton_AddSource.setText("Add");
+        jButton_AddSource.setMaximumSize(new Dimension(150, 4));
+        jButton_AddSource.addActionListener(this);
 
+        jPanel_AddSource = new JPanel();
+        jPanel_AddSource.setPreferredSize(new Dimension(650, 4));
+        jPanel_AddSource.setBorder(BorderFactory.createTitledBorder("Add Source"));
+        org.jdesktop.layout.GroupLayout jPanelAddLayout = new org.jdesktop.layout.GroupLayout(jPanel_AddSource);
+        jPanel_AddSource.setLayout(jPanelAddLayout);
+        jPanelAddLayout.setHorizontalGroup(
+                jPanelAddLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.CENTER)
+                        .add(jPanelAddLayout.createSequentialGroup()
+                                .add(jTextField_URL_OR_IP)
+                                .add(jTextField_Description)
+                                .add(jButton_AddSource)));
+        jPanelAddLayout.setVerticalGroup(
+                jPanelAddLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.CENTER)
+                        .add(jPanelAddLayout.createParallelGroup()
+                                .add(jTextField_URL_OR_IP)
+                                .add(jTextField_Description)
+                                .add(jButton_AddSource)));
+        
+        // Control
         jButton_StartNTPClient = new JButton();
         jButton_StartNTPClient.setText("START NTP requests");
         jButton_StartNTPClient.setMaximumSize(new Dimension(100, 4));
@@ -649,7 +695,7 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
 
         org.jdesktop.layout.GroupLayout layout = new org.jdesktop.layout.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
-        getContentPane().setPreferredSize(new Dimension(700, 450));
+        getContentPane().setPreferredSize(new Dimension(1000, 700));
          
         layout.setHorizontalGroup(
             layout.createParallelGroup(org.jdesktop.layout.GroupLayout.CENTER)
@@ -659,6 +705,7 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
                     .add(jPanel_Time_Status))
                 .add(layout.createParallelGroup()            
                     .add(jPanel_NTPServerSelection)
+                    .add(jPanel_AddSource)
                     .add(jPanel_Controls))));
         layout.setVerticalGroup(
             layout.createParallelGroup(org.jdesktop.layout.GroupLayout.CENTER)
@@ -668,6 +715,8 @@ public class TimeServiceClient_GUI_uses_library extends javax.swing.JFrame imple
                 .add(jPanel_Time_Status))
             .add(layout.createSequentialGroup()
                 .add(jPanel_NTPServerSelection)
+                .addContainerGap(20, 20)
+                .add(jPanel_AddSource)
                 .addContainerGap(20, 20)
                 .add(jPanel_Controls)));
 
